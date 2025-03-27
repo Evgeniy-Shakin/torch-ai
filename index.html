@@ -29,7 +29,7 @@
             background-color: #000;
         }
         
-        #cameraPreview {
+        video {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -62,7 +62,7 @@
     </style>
 </head>
 <body>
-    <div class="camera-container">
+    <div class="camera-container" id="cameraContainer">
         <video id="cameraPreview" autoplay playsinline></video>
     </div>
     
@@ -75,11 +75,7 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        const videoElement = document.getElementById('cameraPreview');
-        const switchBtn = document.getElementById('switchCamera');
-        const takePhotoBtn = document.getElementById('takePhoto');
-        
-        let currentFacingMode = 'environment'; // Начинаем с задней камеры
+        let currentFacingMode = 'environment';
         let stream = null;
 
         async function startCamera(facingMode) {
@@ -97,22 +93,32 @@
                 };
                 
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Пересоздаем video элемент
+                const cameraContainer = document.getElementById("cameraContainer");
+                cameraContainer.innerHTML = ""; // Очистка контейнера
+                
+                const videoElement = document.createElement("video");
+                videoElement.id = "cameraPreview";
+                videoElement.autoplay = true;
+                videoElement.playsInline = true;
                 videoElement.srcObject = stream;
                 
+                cameraContainer.appendChild(videoElement);
+                setTimeout(() => videoElement.play(), 100);
             } catch (err) {
-                console.error('Camera error:', err);
-                alert('Не удалось получить доступ к камере');
+                console.error('Ошибка камеры:', err);
+                alert('Не удалось получить доступ к камере. Проверьте разрешения!');
             }
         }
 
-        // Переключение камеры
-        switchBtn.addEventListener('click', () => {
+        document.getElementById('switchCamera').addEventListener('click', () => {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             startCamera(currentFacingMode);
         });
 
-        // Сделать фото
-        takePhotoBtn.addEventListener('click', () => {
+        document.getElementById('takePhoto').addEventListener('click', () => {
+            const videoElement = document.getElementById("cameraPreview");
             const canvas = document.createElement('canvas');
             canvas.width = videoElement.videoWidth;
             canvas.height = videoElement.videoHeight;
@@ -120,18 +126,13 @@
             ctx.drawImage(videoElement, 0, 0);
             
             const photoUrl = canvas.toDataURL('image/jpeg');
-            tg.showAlert(`Photo taken! (${canvas.width}x${canvas.height})`);
-            
-            // Здесь можно отправить фото на сервер:
-            // fetch('/api/save-photo', { method: 'POST', body: photoUrl });
+            tg.showAlert(`Фото сделано! (${canvas.width}x${canvas.height})`);
         });
 
-        // Запуск камеры при загрузке
         window.addEventListener('DOMContentLoaded', () => {
-            startCamera(currentFacingMode);
+            setTimeout(() => startCamera(currentFacingMode), 500);
         });
 
-        // Остановка камеры при закрытии
         window.addEventListener('beforeunload', () => {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
