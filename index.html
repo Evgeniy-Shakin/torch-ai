@@ -29,7 +29,11 @@
             background-color: #000;
         }
         
+<<<<<<< HEAD
         #cameraPreview {
+=======
+        video {
+>>>>>>> refs/remotes/origin/main
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -62,7 +66,11 @@
     </style>
 </head>
 <body>
+<<<<<<< HEAD
     <div class="camera-container">
+=======
+    <div class="camera-container" id="cameraContainer">
+>>>>>>> refs/remotes/origin/main
         <video id="cameraPreview" autoplay playsinline></video>
     </div>
     
@@ -75,11 +83,15 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
+<<<<<<< HEAD
         const videoElement = document.getElementById('cameraPreview');
         const switchBtn = document.getElementById('switchCamera');
         const takePhotoBtn = document.getElementById('takePhoto');
         
         let currentFacingMode = 'environment'; // Начинаем с задней камеры
+=======
+        let currentFacingMode = 'environment';
+>>>>>>> refs/remotes/origin/main
         let stream = null;
 
         async function startCamera(facingMode) {
@@ -97,6 +109,7 @@
                 };
                 
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
+<<<<<<< HEAD
                 videoElement.srcObject = stream;
                 
             } catch (err) {
@@ -107,12 +120,39 @@
 
         // Переключение камеры
         switchBtn.addEventListener('click', () => {
+=======
+                
+                // Пересоздаем video элемент
+                const cameraContainer = document.getElementById("cameraContainer");
+                cameraContainer.innerHTML = ""; // Очистка контейнера
+                
+                const videoElement = document.createElement("video");
+                videoElement.id = "cameraPreview";
+                videoElement.autoplay = true;
+                videoElement.playsInline = true;
+                videoElement.srcObject = stream;
+                
+                cameraContainer.appendChild(videoElement);
+                setTimeout(() => videoElement.play(), 100);
+            } catch (err) {
+                console.error('Ошибка камеры:', err);
+                alert('Не удалось получить доступ к камере. Проверьте разрешения!');
+            }
+        }
+
+        document.getElementById('switchCamera').addEventListener('click', () => {
+>>>>>>> refs/remotes/origin/main
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             startCamera(currentFacingMode);
         });
 
+<<<<<<< HEAD
         // Сделать фото
         takePhotoBtn.addEventListener('click', () => {
+=======
+        document.getElementById('takePhoto').addEventListener('click', () => {
+            const videoElement = document.getElementById("cameraPreview");
+>>>>>>> refs/remotes/origin/main
             const canvas = document.createElement('canvas');
             canvas.width = videoElement.videoWidth;
             canvas.height = videoElement.videoHeight;
@@ -120,6 +160,7 @@
             ctx.drawImage(videoElement, 0, 0);
             
             const photoUrl = canvas.toDataURL('image/jpeg');
+<<<<<<< HEAD
             tg.showAlert(`Photo taken! (${canvas.width}x${canvas.height})`);
             
             // Здесь можно отправить фото на сервер:
@@ -132,6 +173,15 @@
         });
 
         // Остановка камеры при закрытии
+=======
+            tg.showAlert(`Фото сделано! (${canvas.width}x${canvas.height})`);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => startCamera(currentFacingMode), 500);
+        });
+
+>>>>>>> refs/remotes/origin/main
         window.addEventListener('beforeunload', () => {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
