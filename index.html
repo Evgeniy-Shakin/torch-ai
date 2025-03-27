@@ -126,7 +126,8 @@
             ctx.drawImage(videoElement, 0, 0);
             
             const photoUrl = canvas.toDataURL('image/jpeg');
-            tg.showAlert(`Фото сделано! (${canvas.width}x${canvas.height})`);
+            tg.showAlert(`Вас заметили!`);
+            //tg.showAlert(`Фото сделано! (${canvas.width}x${canvas.height})`);
         });
 
         window.addEventListener('DOMContentLoaded', () => {
