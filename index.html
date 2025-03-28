@@ -1,168 +1,275 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Определение позы через камеру</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: var(--tg-theme-bg-color, #f5f5f5);
-            color: var(--tg-theme-text-color, #333);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-        }
-        .camera-container {
-            width: 300px;
-            height: 400px;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            margin-bottom: 20px;
-            position: relative;
-            background-color: #000;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .controls {
-            display: flex;
-            gap: 15px;
-        }
-        .control-btn {
-            background-color: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-        .control-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        .control-btn:active {
-            transform: translateY(0);
-        }
-        .info-container {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 480px;
-            justify-content: center;
-        }
-        .info-box {
-            width: 150px;
-            height: 150px;
-            background-color: white;
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            padding: 10px;
-            text-align: center;
-        }
-        .progress-container {
-            width: 100%;
-            max-width: 480px;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 15px;
-        }
-        #progressBar {
-            height: 100%;
-            background-color: #4CAF50;
-            width: 0%;
-            transition: width 0.3s;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pose Trainer</title>
+  <style>
+    /* Существующие стили остаются без изменений */
+    :root {
+      --primary-color: #40B3E0;
+      --secondary-color: #2D8CC0;
+      --text-color: #2C3E50;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: linear-gradient(180deg, #f5f9ff 0%, #e1f0ff 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-color);
+    }
+
+    .header {
+      text-align: center;
+      margin: 12px 0;
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .camera-container {
+      width: 92vw;
+      max-width: 400px;
+      aspect-ratio: 3/4;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      background: #000;
+      position: relative;
+      margin: 8px 0;
+    }
+
+    #cameraPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin: 12px 0;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary-color);
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(64, 179, 224, 0.2);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+      background: var(--secondary-color);
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      max-width: 400px;
+      margin: 8px 0;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 16px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #7f8c8d;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary-color);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+  </style>
 </head>
 <body>
-    <h2>Определение позы через камеру</h2>
-    <div class="camera-container">
-        <video id="cameraPreview" autoplay playsinline></video>
-    </div>
-    
-    <div class="progress-container">
-        <div id="progressBar"></div>
-    </div>
-    
-    <div class="info-container">
-        <div class="info-box">
-            <div class="info-title">МОНЕТЫ</div>
-            <div class="info-value">🪙 <span id="coinsCount">0</span></div>
-        </div>
-        <div class="info-box">
-            <div class="info-title">ПОЗА</div>
-            <div class="info-value" id="poseName">-</div>
-            <div id="holdTime">0.0s</div>
-        </div>
-    </div>
-    
-    <div class="controls">
-        <button class="control-btn" id="switchCamera">Переключить камеру</button>
-        <button class="control-btn" id="takePhoto">Сделать фото</button>
-    </div>
+  <h1 class="header">Torch coin App</h1>
+  
+  <div class="camera-container">
+    <video id="cameraPreview" autoplay playsinline></video>
+  </div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressBar"></div>
+  </div>
 
-        let currentFacingMode = 'environment';
-        let stream = null;
+  <div class="stats-container">
+    <div class="stat-box">
+      <div class="stat-label">torch coin</div>
+      <div class="stat-value">🪙 <span id="coinsCount">0</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Поза</div>
+      <div class="stat-value" id="poseName">-</div>
+      <div id="holdTime" style="font-size:0.8rem;color:#7f8c8d">0.0s</div>
+    </div>
+  </div>
 
-        async function startCamera(facingMode) {
-            try {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                const constraints = { video: { facingMode: facingMode } };
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                document.getElementById('cameraPreview').srcObject = stream;
-            } catch (err) {
-                console.error('Ошибка камеры:', err);
-                alert('Не удалось получить доступ к камере. Проверьте разрешения.');
-            }
+  <div class="controls">
+    <button class="btn" id="switchCamera">↻</button>
+  </div>
+
+  <script>
+    const videoElement = document.getElementById('cameraPreview');
+    const Telegram = window.Telegram?.WebApp;
+    const coinsCount = document.getElementById('coinsCount');
+    const poseName = document.getElementById('poseName');
+    const holdTime = document.getElementById('holdTime');
+    const progressBar = document.getElementById('progressBar');
+    
+    let currentStream = null;
+    let currentCamera = 'user';
+    let coins = 0;
+
+    // Инициализация Telegram WebApp
+    if (Telegram) {
+      Telegram.ready();
+      Telegram.expand();
+      document.body.style.padding = '0';
+      Telegram.BackButton.hide();
+    }
+
+    // Управление камерой с обработкой ошибок
+    async function initCamera(facingMode = 'user') {
+      try {
+        if (currentStream) {
+          currentStream.getTracks().forEach(track => track.stop());
         }
 
-        document.getElementById('switchCamera').addEventListener('click', () => {
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            startCamera(currentFacingMode);
+        const constraints = {
+          video: {
+            facingMode: facingMode,
+            width: { min: 320, ideal: 640, max: 1280 },
+            height: { min: 240, ideal: 480, max: 720 },
+            frameRate: { ideal: 24, max: 30 }
+          }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+          .catch(err => {
+            showAlert('Разрешите доступ к камере в настройках браузера');
+            throw err;
+          });
+
+        currentStream = stream;
+        videoElement.srcObject = stream;
+        
+        // Для iOS
+        videoElement.setAttribute('playsinline', 'true');
+        videoElement.muted = true;
+        await videoElement.play();
+
+      } catch (error) {
+        console.error('Camera error:', error);
+        showAlert(`Ошибка камеры: ${error.message}`);
+        if (Telegram) {
+          Telegram.HapticFeedback.notificationOccurred('error');
+        }
+      }
+    }
+
+    // Переключение камеры
+    function switchCamera() {
+      currentCamera = currentCamera === 'user' ? 'environment' : 'user';
+      initCamera(currentCamera);
+    }
+
+    // Отправка кадра на сервер
+    async function processFrame() {
+      if (!videoElement.videoWidth) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+      canvas.getContext('2d').drawImage(videoElement, 0, 0);
+
+      try {
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
+        const formData = new FormData();
+        formData.append('frame', blob);
+
+        const response = await fetch('/process_frame', {
+          method: 'POST',
+          body: formData
         });
 
-        document.getElementById('takePhoto').addEventListener('click', () => {
-            const videoElement = document.getElementById('cameraPreview');
-            if (!videoElement.srcObject) return;
-            const canvas = document.createElement('canvas');
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0);
-            const photoUrl = canvas.toDataURL('image/jpeg');
-            tg.showAlert('Фото сделано!');
-        });
+        const data = await response.json();
+        updateUI(data);
+      } catch (error) {
+        console.error('Ошибка обработки:', error);
+      }
+    }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => startCamera(currentFacingMode), 500);
-        });
+    // Обновление интерфейса
+    function updateUI(data) {
+      poseName.textContent = data.current_pose || '-';
+      holdTime.textContent = `${data.hold_time?.toFixed(1) || '0.0'}s`;
+      
+      const progress = Math.min((data.hold_time / 3) * 100 || 0, 100);
+      progressBar.style.width = `${progress}%`;
 
-        window.addEventListener('beforeunload', () => {
-            if (stream) stream.getTracks().forEach(track => track.stop());
-        });
-    </script>
+      if (data.stable_pose) {
+        coins++;
+        coinsCount.textContent = coins;
+        if (Telegram) {
+          Telegram.HapticFeedback.impactOccurred('medium');
+        }
+      }
+    }
+
+    // Вспомогательные функции
+    function showAlert(message) {
+      if (Telegram) {
+        Telegram.showAlert(message);
+      } else {
+        alert(message);
+      }
+    }
+
+    // Инициализация
+    document.getElementById('switchCamera').addEventListener('click', switchCamera);
+    window.addEventListener('DOMContentLoaded', () => initCamera());
+    setInterval(processFrame, 500);
+  </script>
 </body>
 </html>
