@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Определение позы и камера</title>
+    <title>Определение позы через камеру</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -44,17 +44,28 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            transition: all 0.2s;
+        }
+        .control-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .control-btn:active {
+            transform: translateY(0);
         }
         .info-container {
             display: flex;
             gap: 15px;
             margin-bottom: 20px;
+            width: 100%;
+            max-width: 480px;
+            justify-content: center;
         }
         .info-box {
             width: 150px;
-            height: 100px;
+            height: 150px;
             background-color: white;
-            border-radius: 10px;
+            border-radius: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -65,7 +76,7 @@
         }
         .progress-container {
             width: 100%;
-            max-width: 300px;
+            max-width: 480px;
             height: 20px;
             background-color: #e0e0e0;
             border-radius: 10px;
@@ -81,6 +92,7 @@
     </style>
 </head>
 <body>
+    <h2>Определение позы через камеру</h2>
     <div class="camera-container">
         <video id="cameraPreview" autoplay playsinline></video>
     </div>
@@ -91,14 +103,19 @@
     
     <div class="info-container">
         <div class="info-box">
-            <div>МОНЕТЫ</div>
-            <div id="coinsCount">0</div>
+            <div class="info-title">МОНЕТЫ</div>
+            <div class="info-value">🪙 <span id="coinsCount">0</span></div>
         </div>
         <div class="info-box">
-            <div>ПОЗА</div>
-            <div id="poseName">-</div>
+            <div class="info-title">ПОЗА</div>
+            <div class="info-value" id="poseName">-</div>
             <div id="holdTime">0.0s</div>
         </div>
+    </div>
+    
+    <div class="controls">
+        <button class="control-btn" id="switchCamera">Переключить камеру</button>
+        <button class="control-btn" id="takePhoto">Сделать фото</button>
     </div>
 
     <script>
@@ -107,63 +124,44 @@
 
         let currentFacingMode = 'environment';
         let stream = null;
-        let coins = 0;
-        let lastPose = null;
 
         async function startCamera(facingMode) {
             try {
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
                 }
-
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facingMode }
-                });
-
-                document.getElementById("cameraPreview").srcObject = stream;
+                const constraints = { video: { facingMode: facingMode } };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                document.getElementById('cameraPreview').srcObject = stream;
             } catch (err) {
-                alert('Ошибка доступа к камере');
+                console.error('Ошибка камеры:', err);
+                alert('Не удалось получить доступ к камере. Проверьте разрешения.');
             }
         }
 
-        function captureAndSendFrame() {
-            const videoElement = document.getElementById("cameraPreview");
-            if (!videoElement.srcObject) return;
-            
-            const canvas = document.createElement("canvas");
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(videoElement, 0, 0);
-
-            canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append("frame", blob);
-
-                fetch("/process_frame", { method: "POST", body: formData })
-                    .then(res => res.json())
-                    .then(data => {
-                        document.getElementById("poseName").textContent = data.current_pose || "-";
-                        document.getElementById("holdTime").textContent = data.hold_time + "s";
-                        document.getElementById("progressBar").style.width = Math.min((data.hold_time / 3) * 100, 100) + "%";
-                        
-                        if (data.stable_pose) {
-                            coins++;
-                            document.getElementById("coinsCount").textContent = coins;
-                        }
-                    });
-            }, "image/jpeg");
-        }
-
-        window.addEventListener("DOMContentLoaded", () => {
-            setTimeout(() => startCamera(currentFacingMode), 500);
-            setInterval(captureAndSendFrame, 500);
+        document.getElementById('switchCamera').addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            startCamera(currentFacingMode);
         });
 
-        window.addEventListener("beforeunload", () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+        document.getElementById('takePhoto').addEventListener('click', () => {
+            const videoElement = document.getElementById('cameraPreview');
+            if (!videoElement.srcObject) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0);
+            const photoUrl = canvas.toDataURL('image/jpeg');
+            tg.showAlert('Фото сделано!');
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => startCamera(currentFacingMode), 500);
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.getTracks().forEach(track => track.stop());
         });
     </script>
 </body>
