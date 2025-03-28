@@ -23,6 +23,7 @@
       text-align: center;
     }
     .camera-container {
+      position: relative;
       width: 100%;
       max-width: 300px;
       aspect-ratio: 3/4;
@@ -37,6 +38,26 @@
       height: 100%;
       object-fit: cover;
       transform: scaleX(-1);
+    }
+    .switch-camera-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.8);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    .switch-camera-btn img {
+      width: 24px;
+      height: 24px;
     }
     .info-container {
       display: flex;
@@ -100,6 +121,9 @@
   <h2>Определение позы через камеру</h2>
   <div class="camera-container">
     <video id="cameraPreview" autoplay playsinline></video>
+    <button class="switch-camera-btn" id="switchCameraBtn">
+      <img src="https://cdn-icons-png.flaticon.com/512/159/159469.png" alt="Switch Camera">
+    </button>
   </div>
   
   <div class="progress-container">
@@ -124,6 +148,7 @@
     tg.expand();
     
     const videoElement = document.getElementById('cameraPreview');
+    const switchCameraBtn = document.getElementById('switchCameraBtn');
     const coinsCount = document.getElementById('coinsCount');
     const poseName = document.getElementById('poseName');
     const holdTime = document.getElementById('holdTime');
@@ -132,30 +157,44 @@
     let coins = 0;
     let lastPose = null;
     let isProcessing = false;
-    let frameInterval = 500; // Интервал отправки кадров в мс
+    let frameInterval = 500;
+    let currentStream = null;
+    let usingFrontCamera = true;
 
-    // Оптимизированная функция запуска камеры
-    async function startCamera() {
+    // Функция запуска камеры
+    async function startCamera(facingMode = 'user') {
       try {
+        // Останавливаем предыдущий поток, если он есть
+        if (currentStream) {
+          currentStream.getTracks().forEach(track => track.stop());
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 640 },
             height: { ideal: 480 },
-            facingMode: 'user'
+            facingMode: facingMode
           }
         });
-        videoElement.srcObject = stream;
         
-        // Обработчик изменения размера видео
-        const track = stream.getVideoTracks()[0];
-        const settings = track.getSettings();
-        console.log(`Размер видео: ${settings.width}x${settings.height}`);
+        currentStream = stream;
+        videoElement.srcObject = stream;
+        usingFrontCamera = facingMode === 'user';
+        
+        // Обновляем зеркальное отображение для фронтальной камеры
+        videoElement.style.transform = usingFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
         
       } catch (err) {
         console.error('Ошибка доступа к камере:', err);
-        tg.showAlert('Не удалось получить доступ к камере. Пожалуйста, разрешите доступ к камере в настройках.');
+        tg.showAlert(`Не удалось получить доступ к ${facingMode === 'user' ? 'фронтальной' : 'задней'} камере.`);
       }
     }
+
+    // Переключение камеры
+    switchCameraBtn.addEventListener('click', () => {
+      tg.HapticFeedback.impactOccurred('light');
+      startCamera(usingFrontCamera ? 'environment' : 'user');
+    });
 
     // Оптимизированная функция отправки кадра
     async function captureAndSendFrame() {
@@ -165,23 +204,24 @@
       
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 320; // Уменьшаем разрешение для производительности
+        canvas.width = 320;
         canvas.height = 240;
         const ctx = canvas.getContext('2d');
         
-        // Рисуем кадр с масштабированием
+        // Рисуем кадр с учетом текущей камеры
+        if (usingFrontCamera) {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
         
-        // Конвертируем в JPEG с качеством 80% для уменьшения размера
         const blob = await new Promise(resolve => 
           canvas.toBlob(resolve, 'image/jpeg', 0.8)
         );
         
-        // Формируем FormData
         const formData = new FormData();
         formData.append('frame', blob);
         
-        // Отправляем на сервер (замените URL на ваш)
         const response = await fetch('https://your-server.com/process_frame', {
           method: 'POST',
           body: formData
@@ -190,13 +230,10 @@
         if (!response.ok) throw new Error('Ошибка сервера');
         
         const data = await response.json();
-        
-        // Обновляем UI
         updateUI(data);
         
       } catch (error) {
         console.error('Ошибка обработки кадра:', error);
-        // Увеличиваем интервал при ошибках
         frameInterval = Math.min(frameInterval * 1.5, 3000);
       } finally {
         isProcessing = false;
@@ -204,7 +241,6 @@
     }
 
     function updateUI(data) {
-      // Обновляем информацию о позе
       if (data.current_pose) {
         poseName.textContent = data.current_pose;
         lastPose = data.current_pose;
@@ -212,7 +248,6 @@
         poseName.textContent = '-';
       }
       
-      // Обновляем время удержания
       if (data.hold_time > 0) {
         holdTime.textContent = data.hold_time.toFixed(1) + 's';
         const progressPercent = (data.hold_time / 3.0) * 100;
@@ -222,15 +257,11 @@
         progressBar.style.width = '0%';
       }
       
-      // Обработка стабильной позы
       if (data.stable_pose && lastPose) {
         coins++;
         coinsCount.textContent = coins;
         
-        // Вибрация для обратной связи
         if (navigator.vibrate) navigator.vibrate(50);
-        
-        // Можно отправить данные в Telegram
         tg.HapticFeedback.impactOccurred('light');
         tg.sendData(JSON.stringify({ coins: coins, pose: lastPose }));
       }
@@ -238,26 +269,22 @@
 
     // Запуск приложения
     document.addEventListener('DOMContentLoaded', () => {
-      startCamera();
+      startCamera(); // Запускаем фронтальную камеру по умолчанию
       
-      // Адаптивный интервал отправки кадров
       const processFrame = () => {
         captureAndSendFrame().finally(() => {
           setTimeout(processFrame, frameInterval);
         });
       };
       
-      // Начинаем обработку
       setTimeout(processFrame, frameInterval);
     });
     
     // Очистка при закрытии
     tg.onEvent('viewportChanged', (event) => {
       if (event.isStateStable && event.height === 0) {
-        // Закрытие приложения
-        const stream = videoElement.srcObject;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
+        if (currentStream) {
+          currentStream.getTracks().forEach(track => track.stop());
         }
       }
     });
